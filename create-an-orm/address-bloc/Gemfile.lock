@@ -1,5 +1,5 @@
 PATH
-  remote: ../gem/lib
+  remote: ../gem
   specs:
     bloc_record (0.0.0)
       sqlite3 (~> 1.3)
