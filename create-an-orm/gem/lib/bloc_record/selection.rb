@@ -1,28 +1,8 @@
 require 'sqlite3'
 
 module Selection
-  def method_missing(m, *args, &block)
-    if m[0...8] === 'find_by_'
-      value = args[0]
-      attribute_name = validate_name(m[8..-1])
-      begin 
-        raise "Improper method name" if !attribute_name
-      rescue RuntimeError => e
-        p e.message
-      end
-      find_by(attribute_name, value)
-    else 
-      super
-    end
-  end
 
 	def find(*ids)
-     id_is_valid = validate_ids(*ids)
-     begin 
-      raise "Invalid Id" if !id_is_valid
-     rescue RuntimeError => e
-      p e.message
-     end
      if ids.length == 1
        find_one(ids.first)
      else
@@ -103,6 +83,64 @@ module Selection
      rows_to_array(rows)
   end
 
+  def where(*args)
+    if args.count > 1
+       expression = args.shift
+       params = args
+    else
+       case args.first
+       when String
+         expression = args.first
+       when Hash
+         expression_hash = BlocRecord::Utility.convert_keys(args.first)
+         expression = expression_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
+       end
+     end
+
+     sql = <<-SQL
+       SELECT #{columns.join ","} FROM #{table}
+       WHERE #{expression};
+     SQL
+
+     rows = connection.execute(sql, params)
+     rows_to_array(rows)
+   end
+
+   def order(*args)
+     if args.count > 1
+       order = args.join(",")
+     else
+       order = args.first.to_s
+     end
+     rows = connection.execute <<-SQL
+       SELECT * FROM #{table}
+       ORDER BY #{order};
+     SQL
+     rows_to_array(rows)
+   end
+
+   def join(*args)
+     if args.count > 1
+       joins = args.map { |arg| "INNER JOIN #{arg} ON #{arg}.#{table}_id = #{table}.id"}.join(" ")
+       rows = connection.execute <<-SQL
+         SELECT * FROM #{table} #{joins}
+       SQL
+     else
+       case args.first
+       when String
+         rows = connection.execute <<-SQL
+           SELECT * FROM #{table} #{BlocRecord::Utility.sql_strings(args.first)};
+         SQL
+       when Symbol
+         rows = connection.execute <<-SQL
+           SELECT * FROM #{table}
+           INNER JOIN #{args.first} ON #{args.first}.#{table}_id = #{table}.id
+         SQL
+       end
+     end
+ 
+     rows_to_array(rows)
+   end
 
    private
    def init_object_from_row(row)
@@ -115,17 +153,5 @@ module Selection
    def rows_to_array(rows)
      rows.map { |row| new(Hash[columns.zip(row)]) }
    end
-
-    def validate_ids(*ids)
-      ids.map { |id| return false if id < 1 }
-      all_ids = []
-      self.all.each { |i| all_ids << i.id }
-      return all_ids.any? { |i| ids.include? i }
-    end
-
-    def validate_name(name)
-      columns.each { |n| return name if n === name}
-      return false
-    end
 
 end
