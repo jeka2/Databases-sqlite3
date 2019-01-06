@@ -16,7 +16,7 @@ module Persistence
        	  self.id = self.class.create(BlocRecord::Utility.instance_variables_to_hash(self)).id
        	  BlocRecord::Utility.reload_obj(self)
        	  return true
-     	end
+    end
 
 		fields = self.class.attributes.map { |col| "#{col}=#{BlocRecord::Utility.sql_strings(self.instance_variable_get("@#{col}"))}" }.join(",")
  
