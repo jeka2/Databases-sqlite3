@@ -3,6 +3,7 @@ require "csv"
 require 'bloc_record/base'
 
 class AddressBook < BlocRecord::Base
+  has_many :entries
 
   def initialize(options = {})
     super
