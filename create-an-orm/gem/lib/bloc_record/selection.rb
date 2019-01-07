@@ -107,19 +107,44 @@ module Selection
    end
 
    def order(*args)
+     order_holder = []
+     args.each do |val|
+      if val.instance_of? Hash
+        order_holder << "#{val.keys[0].to_s} #{val.values[0].to_s}"
+      else
+        order_holder << val.to_s
+      end
+     end
      if args.count > 1
-       order = args.join(",")
+       order = order_holder.join(",")
      else
-       order = args.first.to_s
+       order = order_holder.first
      end
      rows = connection.execute <<-SQL
        SELECT * FROM #{table}
        ORDER BY #{order};
      SQL
      rows_to_array(rows)
-   end
+    end
 
    def join(*args)
+     if args.first.instance_of? Hash
+      ##This was created with the assumption that that hash would not exceed a single key-value pair, as it would be overkill otherwise
+      args = [args.keys[0].to_s, args.values[0].to_s]
+      query_holder = []
+      args.each_with_index do |arg, i| 
+        if i == 0
+          query_holder << "INNER JOIN #{arg} ON #{arg}.#{table}_id = #{table}.id "
+        else
+          query_holder << "INNER JOIN #{arg} ON #{arg}.#{args[i - 1]}_id = #{args[i - 1]}.id "
+        end
+      end
+      rows = connection.execute <<-SQL
+        SELECT * FROM #{table}
+        #{query_holder.join ""};
+      SQL
+      return
+     end
      if args.count > 1
        joins = args.map { |arg| "INNER JOIN #{arg} ON #{arg}.#{table}_id = #{table}.id"}.join(" ")
        rows = connection.execute <<-SQL
