@@ -9,6 +9,7 @@ module Selection
         raise "Improper method name" if !attribute_name
       rescue RuntimeError => e
         p e.message
+        exit(0)
       end
       find_by(attribute_name, value)
     else 
@@ -22,6 +23,7 @@ module Selection
       raise "Invalid Id" if !id_is_valid
      rescue RuntimeError => e
       p e.message
+      exit(0)
      end
      if ids.length == 1
        find_one(ids.first)
@@ -53,7 +55,31 @@ module Selection
      rows_to_array(rows)
   end
 
+  def find_each(batch_support = {})
+    unless batch_support.empty?
+      start = batch_support[:start]
+      batch_size = batch_support[:batch_size]
+      rows = connection.execute <<-SQL
+
+      SQL
+    else
+      self.all.each { |rec| yield(rec) }
+    end
+  end
+
+  def find_in_batches(batch_support = {})
+    
+  end
+
   def take(num=1)
+     begin 
+      raise "Wrong argument type" if !(num.instance_of? Fixnum)
+      raise "The number exceeds number of records" if self.count > num
+      raise "Please provide a proper number" if num < 1
+     rescue RuntimeError => e
+      p e.message
+      exit(0)
+     end
      if num > 1
        rows = connection.execute <<-SQL
          SELECT #{columns.join ","} FROM #{table}
