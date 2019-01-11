@@ -66,7 +66,7 @@ module Selection
      init_object_from_row(row)
    end
  
-   def last
+  def last
      row = connection.get_first_row <<-SQL
        SELECT #{columns.join ","} FROM #{table}
        ORDER BY id DESC LIMIT 1;
@@ -95,7 +95,7 @@ module Selection
          expression_hash = BlocRecord::Utility.convert_keys(args.first)
          expression = expression_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
        end
-     end
+    end
 
      sql = <<-SQL
        SELECT #{columns.join ","} FROM #{table}
@@ -152,7 +152,7 @@ module Selection
 
    def rows_to_array(rows)
      collection = BlocRecord::Collection.new
-     rows.each { |row| collection << new(Hash[columns.zip(row)] )
+     rows.each { |row| collection << new(Hash[columns.zip(row)] ) }
      collection
    end
 

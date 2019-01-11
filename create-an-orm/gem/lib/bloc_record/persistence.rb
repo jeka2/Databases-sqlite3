@@ -3,6 +3,10 @@ require 'bloc_record/schema'
 
 module Persistence
 
+  def method_missing(m, *args, &block)
+    p m
+  end
+
 	def self.included(base)
 		base.extend(ClassMethods)
 	end
@@ -44,6 +48,33 @@ module Persistence
      end
 
      def update(ids, updates)
+       if ids.instance_of? Array
+        ids.each { |id| error_handler('Id\'s must all be integers') if !id.instance_of? Fixnum }
+        multiple_record_update = true
+       else
+         error_handler('The id you provided is not an integer') if !ids.instance_of? Fixnum
+       end 
+       error_handler('Please make sure you\'re updating the record(s) properly') if !updates_are_viable?(updates)
+       if multiple_record_update
+        u = Hash[ids.zip(updates)]
+        u.each do |key, val|
+          value =  BlocRecord::Utility.convert_keys(val)
+          set_statement = ""
+          if value.count > 1
+            value.each { |k, v| set_statement.concat("#{k} = #{BlocRecord::Utility.sql_strings(v)},") }
+          else
+            set_statement = set_statement.concat("#{value.keys[0]} = #{BlocRecord::Utility.sql_strings(value.values[0])},")
+          end
+          set_statement.slice!(-1)
+          connection.execute <<-SQL
+            UPDATE #{table}
+            SET #{set_statement}
+            WHERE id = #{key};
+          SQL
+          
+        end
+        return true
+       end
        updates = BlocRecord::Utility.convert_keys(updates)
        updates.delete "id"
        updates_array = updates.map { |key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}" }
@@ -77,5 +108,30 @@ module Persistence
        data["id"] = connection.execute("SELECT last_insert_rowid();")[0][0]
        new(data)
      end
+
+       private
+        def error_handler(error)
+          p error
+          exit(0)
+        end
+
+        def updates_are_viable?(updates) ##CHECKS FOR PROPER KEYS IN ALL THE RECORDS. :NAME WOULD RETURN TRUE WHILE :NAM WOULD RETURN FALSE
+          key_check = []
+          updates = updates.to_a
+          updates.each do |update|
+            self.columns.each do |col|
+              if col.to_s == update.keys[0].to_s
+                key_check << 'exists'
+                break
+              end
+            end
+          end
+          if key_check.length != updates.length ##IF THE LENGTHS ARE DIFFERENT, ONE OR MORE OF THE KEY NAMES DID NOT CORRESPOND TO AN EXISTING COLUMN NAME
+            return false
+          else
+            return true
+          end
+        end
    end
+
 end
