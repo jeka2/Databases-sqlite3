@@ -4,7 +4,11 @@ require 'bloc_record/schema'
 module Persistence
 
   def method_missing(m, *args, &block)
-    p m
+       if m[0...7] == 'update_'
+        update_attribute( m[7..-1], args[0] )
+       else
+        super
+       end
   end
 
 	def self.included(base)
@@ -117,10 +121,14 @@ module Persistence
 
         def updates_are_viable?(updates) ##CHECKS FOR PROPER KEYS IN ALL THE RECORDS. :NAME WOULD RETURN TRUE WHILE :NAM WOULD RETURN FALSE
           key_check = []
-          updates = updates.to_a
           updates.each do |update|
+            if update.instance_of? Array
+              key = update[0]
+            elsif update.instance_of? Hash
+              key = update.keys[0].to_s
+            end
             self.columns.each do |col|
-              if col.to_s == update.keys[0].to_s
+              if col.to_s == key
                 key_check << 'exists'
                 break
               end
