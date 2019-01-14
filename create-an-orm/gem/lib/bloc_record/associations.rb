@@ -6,7 +6,7 @@ require 'active_support/inflector'
    	define_method(association) do
        rows = self.class.connection.execute <<-SQL
          SELECT * FROM #{association.to_s.singularize}
-         WHERE #{self.class.table}_id = #{self.id}
+         WHERE #{self.class.table}_id = #{self.id};
        SQL
  
        class_name = association.to_s.classify.constantize
@@ -20,12 +20,29 @@ require 'active_support/inflector'
      end
    end
 
+   def has_one(association)
+    association_name = association.to_s
+    define_method(association)
+      row = self.class.connection.get_first_row <<-SQL
+        SELECT * FROM #{association_name}
+        WHERE #{self.class.table}_id = #{self.id};
+      SQL
+
+      class_name = association_name.classify.constantize
+
+      record = BlocRecord::Collection.new
+      record << class_name.new(class_name.columns.zip(row))
+
+      record
+    end
+   end
+
    def belongs_to(association)
      define_method(association) do
        association_name = association.to_s
        row = self.class.connection.get_first_row <<-SQL
          SELECT * FROM #{association_name}
-         WHERE id = #{self.send(association_name + "_id")}
+         WHERE id = #{self.send(association_name + "_id")};
        SQL
  
        class_name = association_name.classify.constantize
