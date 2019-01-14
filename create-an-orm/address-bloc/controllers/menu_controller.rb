@@ -152,8 +152,18 @@ class MenuController
   end
 
   def delete_entry(entry)
-    address_book.entries.delete(entry)
-    puts "#{entry.name} has been deleted"
+    ids = []
+    names = []
+    address_book.where(entry).each do |e| 
+      ids << e.id 
+      names << e.name
+    end
+    self.class.destroy(ids)
+    if ids.count > 1
+      names.each { |name| p "#{name} has been deleted" }
+    else
+      puts "#{names[0]} has been deleted"
+    end
   end
 
   def edit_entry(entry)

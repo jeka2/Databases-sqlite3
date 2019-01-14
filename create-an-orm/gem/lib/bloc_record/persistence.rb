@@ -41,6 +41,10 @@ module Persistence
      self.class.destroy(self.id)
   end
 
+  def destroy_all
+    p self
+  end
+
 	module ClassMethods
 
      def update_all(updates)
@@ -60,18 +64,54 @@ module Persistence
        true
      end
 
-     def destroy_all(conditions_hash=nil)
-       if conditions_hash && !conditions_hash.empty?
-         conditions_hash = BlocRecord::Utility.convert_keys(conditions_hash)
+     def destroy_all(conditions_hash=nil, *args)
+       case conditions_hash
+       when nil
+        connection.execute <<-SQL
+           DELETE FROM #{table}
+        SQL
+       when String
+        if args
+          if args.count.odd? ##IF THERE IS AN APPROPRIATE NUMBER OF ELEMENTS - OR ONE CONDITION FOR EVERY VARIABLE
+            key_array = [conditions_hash.delete("?")]
+            value_array =  [BlocRecord::Utility.sql_strings(args[0])]
+            if args.count > 1
+              1.upto(args.count) do |index| 
+                key_array.concat(" AND ")
+                if index.odd? 
+                  key_array << args[index].delete("?")
+                else
+                  value_array << BlocRecord::Utility.sql_strings(args[index])
+                end
+              end
+            end
+            conditions = key_array.zip(value_array)
+            conditions.each do |condition|
+              key = condition[0]
+              value = condition[1]
+              connection.execute <<-SQL
+                DELETE FROM #{table}
+                WHERE #{key} #{value};
+              SQL
+            end
+          else
+            puts "Please make sure you put it in the proper condition"
+            exit(0)
+          end
+        else
+          condition_string = condition_hash
+          connection.execute <<-SQL
+            DELETE FROM #{table}
+            WHERE #{condition_string};
+          SQL
+        end
+       when Hash
+        conditions_hash = BlocRecord::Utility.convert_keys(conditions_hash)
          conditions = conditions_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
  
          connection.execute <<-SQL
            DELETE FROM #{table}
            WHERE #{conditions};
-         SQL
-       else
-        connection.execute <<-SQL
-           DELETE FROM #{table}
          SQL
        end
        true

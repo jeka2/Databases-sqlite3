@@ -152,7 +152,7 @@ module Selection
 
    def rows_to_array(rows)
      collection = BlocRecord::Collection.new
-     rows.each { |row| collection << new(Hash[columns.zip(row)] )
+     rows.each { |row| collection << new(Hash[columns.zip(row)] ) }
      collection
    end
 
