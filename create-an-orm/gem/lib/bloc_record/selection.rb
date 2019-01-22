@@ -56,19 +56,33 @@ module Selection
   end
 
   def find_each(batch_support = {})
+    return error_handler("no data provided") unless block_given? || !batch_support.empty?
     unless batch_support.empty?
       start = batch_support[:start]
       batch_size = batch_support[:batch_size]
       rows = connection.execute <<-SQL
-
+         SELECT #{columns.join ","} FROM #{table}
+         LIMIT #{batch_size}
+         OFFSET #{start}; 
       SQL
+      rows = rows_to_array(rows)
+      rows.each { |obj| p "Record by id of:#{obj.id} is #{yield(obj)}" }
     else
-      self.all.each { |rec| yield(rec) }
+      self.all.each { |obj| p "Record by id of:#{obj.id} is #{yield(obj)}" }
     end
   end
 
   def find_in_batches(batch_support = {})
-    
+    return error_handler("no data provided") unless block_given? && !batch_support.empty?
+    start = batch_support[:start]
+    batch_size = batch_support[:batch_size]
+    rows = connection.execute <<-SQL
+         SELECT #{columns.join ","} FROM #{table}
+         LIMIT #{batch_size}
+         OFFSET #{start}; 
+    SQL
+    rows = rows_to_array(rows)
+    yield(rows)
   end
 
   def take(num=1)
@@ -131,6 +145,12 @@ module Selection
 
 
    private
+   def error_handler(err)
+    if err === "no data provided"
+      p "No blocks or arguments provided"
+    end
+   end
+
    def init_object_from_row(row)
      if row
        data = Hash[columns.zip(row)]
