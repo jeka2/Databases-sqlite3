@@ -4,4 +4,5 @@
  
  BlocRecord.connect_to('db/address_bloc.sqlite')
  
-p Entry.where(name: 'Foo One').destroy_all
+ Entry.destroy_all("phone_number = ?", '111-111-1111')
+ p Entry.all

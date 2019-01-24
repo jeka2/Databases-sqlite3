@@ -71,7 +71,7 @@ module Persistence
            DELETE FROM #{table}
         SQL
        when String
-        if args
+        if !args.empty?
           if args.count.odd? ##IF THERE IS AN APPROPRIATE NUMBER OF ELEMENTS - OR ONE CONDITION FOR EVERY VARIABLE
             key_array = [conditions_hash.delete("?")]
             value_array =  [BlocRecord::Utility.sql_strings(args[0])]
@@ -99,7 +99,7 @@ module Persistence
             exit(0)
           end
         else
-          condition_string = condition_hash
+          condition_string = conditions_hash
           connection.execute <<-SQL
             DELETE FROM #{table}
             WHERE #{condition_string};
